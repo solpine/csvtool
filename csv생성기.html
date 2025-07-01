@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV 생성기 (프론트엔드 전용)</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6; 
+            padding: 20px; 
+            max-width: 960px; 
+            margin: auto; 
+            background-color: #f4f7f9;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            text-align: center; 
+            color: #0056b3;
+        }
+        .table-controls {
+            margin-bottom: 20px;
+            text-align: right;
+        }
+        .control-btn {
+            padding: 8px 15px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 1px solid #007BFF;
+            background-color: #fff;
+            color: #007BFF;
+            transition: all 0.3s ease;
+        }
+        .control-btn:hover {
+            background-color: #007BFF;
+            color: #fff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        th input, td input {
+            width: 100%;
+            border: none;
+            padding: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+            background-color: transparent;
+        }
+        th input {
+            font-weight: bold;
+        }
+        .delete-row-btn {
+            padding: 5px 10px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .submit-btn { 
+            display: block; 
+            width: 100%; 
+            padding: 15px; 
+            background-color: #28a745; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 18px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .submit-btn:hover { 
+            background-color: #218838; 
+        }
+        #status { 
+            margin-top: 20px; 
+            text-align: center; 
+            font-weight: bold; 
+            min-height: 24px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>표 형식 CSV 생성기 (오프라인)</h1>
+        <p>아래 표에 직접 데이터를 입력하고 '행 추가' 버튼으로 새로운 행을 만드세요. 모든 작업은 현재 브라우저에서만 이루어집니다.</p>
+        
+        <div class="table-controls">
+            <button class="control-btn" onclick="addRow()">+ 행 추가</button>
+        </div>
+
+        <table id="csvTable">
+            <thead>
+                <tr>
+                    <th><input type="text" value="이름"></th>
+                    <th><input type="text" value="나이"></th>
+                    <th><input type="text" value="도시"></th>
+                    <th>동작</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><input type="text" value="홍길동"></td>
+                    <td><input type="text" value="25"></td>
+                    <td><input type="text" value="서울, 강남"></td>
+                    <td><button class="delete-row-btn" onclick="deleteRow(this)">삭제</button></td>
+                </tr>
+                <tr>
+                    <td><input type="text" value="성춘향"></td>
+                    <td><input type="text" value="22"></td>
+                    <td><input type="text" value="남원"></td>
+                    <td><button class="delete-row-btn" onclick="deleteRow(this)">삭제</button></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button id="generateBtn" class="submit-btn" onclick="generateCSV_FrontendOnly()">CSV 파일 생성 및 다운로드</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // 새로운 행을 테이블에 추가하는 함수
+        function addRow() {
+            const table = document.getElementById('csvTable').getElementsByTagName('tbody')[0];
+            const headerCells = document.getElementById('csvTable').getElementsByTagName('thead')[0].rows[0].cells;
+            const newRow = table.insertRow();
+
+            for (let i = 0; i < headerCells.length - 1; i++) {
+                const newCell = newRow.insertCell(i);
+                newCell.innerHTML = '<input type="text" value="">';
+            }
+
+            const actionCell = newRow.insertCell(headerCells.length - 1);
+            actionCell.innerHTML = '<button class="delete-row-btn" onclick="deleteRow(this)">삭제</button>';
+        }
+
+        // 특정 행을 삭제하는 함수
+        function deleteRow(btn) {
+            const row = btn.parentNode.parentNode;
+            if (row.parentNode.rows.length > 1) {
+                row.parentNode.removeChild(row);
+            } else {
+                alert("마지막 행은 삭제할 수 없습니다.");
+            }
+        }
+        
+        // [핵심 변경] 백엔드 없이 CSV를 생성하고 다운로드하는 함수
+        function generateCSV_FrontendOnly() {
+            const statusElem = document.getElementById('status');
+            const table = document.getElementById('csvTable');
+
+            // 1. 테이블에서 헤더와 데이터 읽기 (이전과 동일)
+            const headers = Array.from(table.querySelectorAll('thead th input')).map(input => input.value);
+            const rows = Array.from(table.querySelectorAll('tbody tr')).map(row => 
+                Array.from(row.querySelectorAll('td input')).map(input => input.value)
+            );
+
+            if (rows.length === 0) {
+                statusElem.textContent = "오류: 데이터가 없습니다.";
+                statusElem.style.color = 'red';
+                return;
+            }
+
+            // 2. 데이터를 CSV 형식의 문자열로 변환
+            // 데이터에 쉼표(,)나 큰따옴표(")가 포함된 경우를 처리하는 로직 추가
+            const escapeCell = (cell) => {
+                let escaped = cell.replace(/"/g, '""'); // 큰따옴표를 두 개로 치환
+                if (escaped.includes(',') || escaped.includes('"') || escaped.includes('\n')) {
+                    escaped = `"${escaped}"`; // 쉼표나 큰따옴표가 있으면 전체를 큰따옴표로 감싸기
+                }
+                return escaped;
+            };
+
+            let csvContent = [
+                headers.map(escapeCell).join(','),
+                ...rows.map(row => row.map(escapeCell).join(','))
+            ].join('\r\n');
+
+            // 3. Blob 객체 생성 및 다운로드
+            // 한글 깨짐 방지를 위해 BOM(Byte Order Mark) 추가
+            const BOM = "\uFEFF";
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'my_data.csv'; // 다운로드될 파일 이름
+
+            document.body.appendChild(a);
+            a.click();
+            
+            // 메모리 정리
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            statusElem.textContent = "✅ CSV 파일 다운로드 완료!";
+            statusElem.style.color = 'green';
+        }
+    </script>
+</body>
+</html>
